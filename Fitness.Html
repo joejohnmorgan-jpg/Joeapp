@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Fitness Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #121212; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .card { background: #1e1e1e; border-radius: 15px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        .btn-green { background: #4ade80; color: #000; font-weight: bold; padding: 10px; border-radius: 10px; width: 100%; cursor: pointer; }
+        .workout-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 999; display: none; overflow-y: auto; padding: 20px; }
+        input { background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 5px; width: 100%; text-align: center; }
+        label { display: block; text-transform: uppercase; font-size: 0.65rem; color: #888; margin-bottom: 4px; font-weight: bold; }
+        .chart-wrapper { height: 150px; width: 100%; position: relative; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h1 class="text-xl font-bold italic text-green-400 uppercase leading-none">Mission: -100 lbs</h1>
+                <p id="current-date" class="text-gray-400 text-xs mt-1"></p>
+            </div>
+            <div id="weather-temp" class="text-xl font-bold">--°</div>
+        </div>
+
+        <div class="card text-center">
+            <div class="chart-wrapper"><canvas id="weightChart"></canvas></div>
+            <button class="btn-green text-sm w-1/2 mx-auto" onclick="logWeight()">Log Weight</button>
+        </div>
+
+        <h2 class="text-xs font-bold mb-3 text-gray-400 uppercase tracking-widest text-center">Select Your Session</h2>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="card flex flex-col items-center p-4 cursor-pointer border-l-4 border-green-500" onclick="openWorkout('Day 1')">
+                <span class="text-xl mb-1">💪</span><span class="font-bold text-sm">Day 1</span>
+                <span class="text-[10px] text-gray-500 uppercase font-bold text-center">Push</span>
+            </div>
+            <div class="card flex flex-col items-center p-4 cursor-pointer border-l-4 border-green-500" onclick="openWorkout('Day 2')">
+                <span class="text-xl mb-1">🧗</span><span class="font-bold text-sm">Day 2</span>
+                <span class="text-[10px] text-gray-500 uppercase font-bold text-center">Pull</span>
+            </div>
+            <div class="card flex flex-col items-center p-4 cursor-pointer border-l-4 border-green-500" onclick="openWorkout('Day 3')">
+                <span class="text-xl mb-1">🦵</span><span class="font-bold text-sm">Day 3</span>
+                <span class="text-[10px] text-gray-500 uppercase font-bold text-center">Legs</span>
+            </div>
+            <div class="card flex flex-col items-center p-4 cursor-pointer border-l-4 border-blue-500" onclick="openWorkout('Day 4')">
+                <span class="text-xl mb-1">🔋</span><span class="font-bold text-sm">Day 4</span>
+                <span class="text-[10px] text-gray-500 uppercase font-bold text-center">Heal</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="workout-screen" class="workout-screen">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="workout-title" class="text-3xl font-black italic text-green-400"></h2>
+            <button onclick="closeWorkout()" class="text-red-500 font-bold border border-red-900 px-4 py-1 rounded">X</button>
+        </div>
+        <div id="exercise-list"></div>
+        <button class="btn-green mt-8 mb-12 py-4 text-lg uppercase tracking-widest" onclick="saveWorkout()">Save Progress</button>
+    </div>
+
+    <script>
+        const exercisesData = {
+            'Day 1': [
+                {name:'Recumbent Bike', fields:['Mins','Lvl']},
+                {name:'Cable Chest Press', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Flys', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Shoulder Press', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Lateral Raise', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Tricep Pushdown', fields:['Sets','Lbs','Reps']}
+            ],
+            'Day 2': [
+                {name:'Elliptical', fields:['Mins','Lvl']},
+                {name:'Seated Cable Row', fields:['Sets','Lbs','Reps']},
+                {name:'Lat Pulldown', fields:['Sets','Lbs','Reps']},
+                {name:'Face Pulls', fields:['Sets','Lbs','Reps']},
+                {name:'Straight Arm Pulldown', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Bicep Curls', fields:['Sets','Lbs','Reps']}
+            ],
+            'Day 3': [
+                {name:'Treadmill Walk', fields:['Mins','MPH']},
+                {name:'Cable Pull-Throughs', fields:['Sets','Lbs','Reps']},
+                {name:'Seated Leg Extension', fields:['Sets','Lbs','Reps']},
+                {name:'Seated Leg Curl', fields:['Sets','Lbs','Reps']},
+                {name:'Cable Glute Kickback', fields:['Sets','Lbs','Reps']},
+                {name:'Standing Calf Raise', fields:['Sets','Lbs','Reps']}
+            ],
+            'Day 4': [
+                {name:'Recumbent Bike (Slow)', fields:['Mins','Lvl']},
+                {name:'Seated Cable Crunches', fields:['Sets','Lbs','Reps']},
+                {name:'Bird-Dogs', fields:['Sets','Reps']},
+                {name:'Dead Bugs', fields:['Sets','Reps']},
+                {name:'Static Stretching', fields:['Mins Done']}
+            ]
+        };
+
+        let currentDayOpen = '';
+        let weightHistory = JSON.parse(localStorage.getItem('weightHistory')) || [375];
+        let dateLabels = JSON.parse(localStorage.getItem('dateLabels')) || ['Start'];
+        let lastWorkoutData = JSON.parse(localStorage.getItem('lastWorkoutData')) || {};
+
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+
+        const ctx = document.getElementById('weightChart');
+        let weightChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: dateLabels, datasets: [{ label: 'Weight', data: weightHistory, borderColor: '#4ade80', tension: 0.3, pointRadius: 2, fill: false }] },
+            options: { maintainAspectRatio: false, scales: { y: { grid: { color: '#333' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+
+        function logWeight() {
+            const weight = prompt("Enter current weight (lbs):");
+            if (weight) {
+                weightHistory.push(parseFloat(weight));
+                dateLabels.push(new Date().toLocaleDateString(undefined, {month:'short', day:'numeric'}));
+                localStorage.setItem('weightHistory', JSON.stringify(weightHistory));
+                localStorage.setItem('dateLabels', JSON.stringify(dateLabels));
+                weightChart.update();
+            }
+        }
+
+        function openWorkout(day) {
+            currentDayOpen = day;
+            document.getElementById('workout-title').innerText = day;
+            const list = document.getElementById('exercise-list');
+            list.innerHTML = '';
+            exercisesData[day].forEach(ex => {
+                const prev = lastWorkoutData[ex.name] || {};
+                let inputsHtml = `<div class="grid grid-cols-${ex.fields.length} gap-2">`;
+                ex.fields.forEach(f => {
+                    // Unique ID creator to prevent save errors
+                    const inputId = (ex.name + f).replace(/\s+/g, '');
+                    inputsHtml += `<div><label>${f}</label><input type="number" id="${inputId}" value="${prev[f]||''}" placeholder="0"></div>`;
+                });
+                inputsHtml += `</div>`;
+                list.innerHTML += `<div class="card"><h3 class="font-bold text-green-400 mb-2">${ex.name}</h3>${inputsHtml}</div>`;
+            });
+            document.getElementById('workout-screen').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function saveWorkout() {
+            exercisesData[currentDayOpen].forEach(ex => {
+                const data = {};
+                ex.fields.forEach(f => { 
+                    const inputId = (ex.name + f).replace(/\s+/g, '');
+                    data[f] = document.getElementById(inputId).value; 
+                });
+                lastWorkoutData[ex.name] = data;
+            });
+            localStorage.setItem('lastWorkoutData', JSON.stringify(lastWorkoutData));
+            alert("Workout Saved Successfully!");
+            closeWorkout();
+        }
+
+        function closeWorkout() { document.getElementById('workout-screen').style.display = 'none'; }
+
+        fetch("https://api.open-meteo.com/v1/forecast?latitude=43.08&longitude=-79.08&current_weather=true")
+            .then(res => res.json()).then(data => { document.getElementById('weather-temp').innerText = Math.round(data.current_weather.temperature) + "°"; })
+            .catch(() => document.getElementById('weather-temp').innerText = "18°");
+    </script>
+</body>
+</html>
